@@ -15,7 +15,8 @@
 #include <analyses/variable-sensitivity/abstract_value_object.h>
 #include <analyses/variable-sensitivity/abstract_object_set.h>
 
-class value_set_abstract_objectt : public abstract_value_objectt
+class value_set_abstract_objectt : public abstract_value_objectt,
+                                   public value_set_tag
 {
 public:
   /// \copydoc abstract_objectt::abstract_objectt(const typet&)
@@ -51,7 +52,7 @@ public:
 
   /// Getter for the set of stored abstract objects.
   /// \return the values represented by this abstract object
-  const abstract_object_sett &get_values() const
+  const abstract_object_sett &get_values() const override
   {
     return values;
   }

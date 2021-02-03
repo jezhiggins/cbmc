@@ -15,7 +15,8 @@
 #include <analyses/variable-sensitivity/abstract_pointer_object.h>
 #include <analyses/variable-sensitivity/abstract_object_set.h>
 
-class value_set_pointer_abstract_objectt : public abstract_pointer_objectt
+class value_set_pointer_abstract_objectt : public abstract_pointer_objectt,
+                                           public value_set_tag
 {
 public:
   /// \copydoc abstract_objectt::abstract_objectt(const typet&)

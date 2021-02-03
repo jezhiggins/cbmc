@@ -260,7 +260,7 @@ abstract_object_pointert
 value_set_abstract_objectt::merge(abstract_object_pointert other) const
 {
   auto cast_other =
-    std::dynamic_pointer_cast<const value_set_abstract_objectt>(other);
+    std::dynamic_pointer_cast<const value_set_tag>(other);
   if(cast_other)
   {
     auto union_values = values;
@@ -338,7 +338,7 @@ unwrap_operands(const std::vector<abstract_object_pointert> &operands)
 
   for(const auto &op : operands)
   {
-    auto vsab = std::dynamic_pointer_cast<const value_set_abstract_objectt>(
+    auto vsab = std::dynamic_pointer_cast<const value_set_tag>(
       maybe_unwrap_context(op));
     INVARIANT(vsab, "should be a value set abstract object");
     unwrapped.push_back(vsab->get_values());
@@ -364,7 +364,7 @@ abstract_object_pointert
 maybe_extract_single_value(const abstract_object_pointert &maybe_singleton)
 {
   auto const &value_as_set =
-    std::dynamic_pointer_cast<const value_set_abstract_objectt>(
+    std::dynamic_pointer_cast<const value_set_tag>(
       maybe_singleton);
   if(value_as_set)
   {

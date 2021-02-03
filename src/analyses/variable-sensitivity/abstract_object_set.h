@@ -50,4 +50,10 @@ private:
   value_sett values;
 };
 
+class value_set_tag
+{
+public:
+  virtual const abstract_object_sett &get_values() const = 0;
+};
+
 #endif //CBMC_ABSTRACT_OBJECT_SET_H
