@@ -12,36 +12,8 @@
 #ifndef CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_ABSTRACT_OBJECT_H
 #define CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_ABSTRACT_OBJECT_H
 
-#include <unordered_set>
-
 #include <analyses/variable-sensitivity/abstract_value_object.h>
-
-class abstract_object_sett {
-public:
-  using value_sett = std::unordered_set<
-    abstract_object_pointert,
-    abstract_hashert,
-    abstract_equalert>;
-  using const_iterator = value_sett::const_iterator;
-  using value_type = value_sett::value_type;
-  using size_type = value_sett::size_type;
-
-  void insert(const abstract_object_pointert &o) { values.insert(o); }
-  void insert(abstract_object_pointert &&o) { values.insert(std::move(o)); }
-  void insert(const abstract_object_sett &rhs) { values.insert(rhs.begin(), rhs.end()); }
-
-  const_iterator begin() const { return values.begin(); }
-  const_iterator end() const { return values.end(); }
-
-  value_sett::size_type size() const { return values.size(); }
-  bool empty() const { return values.empty(); }
-
-  bool operator==(const abstract_object_sett &rhs) const {
-    return values == rhs.values;
-  }
-private:
-  value_sett values;
-};
+#include <analyses/variable-sensitivity/abstract_object_set.h>
 
 class value_set_abstract_objectt : public abstract_value_objectt
 {

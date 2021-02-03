@@ -12,17 +12,12 @@
 #ifndef CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_POINTER_ABSTRACT_OBJECT_H
 #define CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_POINTER_ABSTRACT_OBJECT_H
 
-#include <unordered_set>
 #include <analyses/variable-sensitivity/abstract_pointer_object.h>
+#include <analyses/variable-sensitivity/abstract_object_set.h>
 
 class value_set_pointer_abstract_objectt : public abstract_pointer_objectt
 {
 public:
-  using abstract_object_sett = std::unordered_set<
-    abstract_object_pointert,
-    abstract_hashert,
-    abstract_equalert>;
-
   /// \copydoc abstract_objectt::abstract_objectt(const typet&)
   explicit value_set_pointer_abstract_objectt(const typet &type);
 

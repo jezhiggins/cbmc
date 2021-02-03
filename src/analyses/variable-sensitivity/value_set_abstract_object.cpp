@@ -164,7 +164,7 @@ abstract_object_pointert value_set_abstract_objectt::expression_transform(
 
   abstract_object_sett resulting_objects;
 
-  auto dispatcher = *values.begin();
+  auto dispatcher = values.first();
   for_each_comb(
     collective_operands,
     [&resulting_objects, &dispatcher, &expr, &environment, &ns](
@@ -297,15 +297,6 @@ void value_set_abstract_objectt::set_values(
   verify();
 }
 
-bool by_length(const std::string &lhs, const std::string &rhs)
-{
-  if(lhs.size() < rhs.size())
-    return true;
-  if(lhs.size() > rhs.size())
-    return false;
-  return lhs < rhs;
-}
-
 void value_set_abstract_objectt::output(
   std::ostream &out,
   const ai_baset &ai,
@@ -323,23 +314,8 @@ void value_set_abstract_objectt::output(
   {
     out << "value-set-begin: ";
 
-    std::vector<std::string> output_values;
-    for(const auto &value : values)
-    {
-      std::ostringstream ss;
-      value->output(ss, ai, ns);
-      output_values.emplace_back(ss.str());
-    }
-    std::sort(output_values.begin(), output_values.end(), by_length);
+    values.output(out, ai, ns);
 
-    bool comma = false;
-    for(auto const &value : output_values)
-    {
-      if(comma)
-        out << ", ";
-      out << value;
-      comma = true;
-    }
     out << " :value-set-end";
   }
 }
@@ -394,9 +370,9 @@ maybe_extract_single_value(const abstract_object_pointert &maybe_singleton)
   {
     PRECONDITION(value_as_set->get_values().size() == 1);
     PRECONDITION(!std::dynamic_pointer_cast<const context_abstract_objectt>(
-      *value_as_set->get_values().begin()));
+      value_as_set->get_values().first()));
 
-    return *value_as_set->get_values().begin();
+    return value_as_set->get_values().first();
   }
   else
     return maybe_singleton;
