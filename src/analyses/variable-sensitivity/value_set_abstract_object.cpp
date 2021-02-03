@@ -52,18 +52,6 @@ index_range_ptrt make_value_set_index_range(const abstract_object_sett &vals)
   return std::make_shared<value_set_index_ranget>(vals);
 }
 
-/// Determine abstract-type of an abstract object \p other.
-/// \param other: the abstract object to get the type of
-/// \return the abstract-type of \p other
-value_set_abstract_objectt::abstract_typet
-get_type(const abstract_object_pointert &other);
-
-/// Determine abstract-type of an expression-type \p type.
-/// \param type: the expression type to get the abstract-type of
-/// \return the abstract-type of \p type
-value_set_abstract_objectt::abstract_typet
-type_to_abstract_type(const typet &type);
-
 exprt rewrite_expression(
   const exprt &expr,
   const std::vector<abstract_object_pointert> &ops);
@@ -125,19 +113,9 @@ void for_each_comb(const std::vector<Con> &super_con, F f)
 }
 
 value_set_abstract_objectt::value_set_abstract_objectt(const typet &type)
-  : abstract_value_objectt(type), my_type(type_to_abstract_type(type))
+  : abstract_value_objectt(type)
 {
-  switch(my_type)
-  {
-  case abstract_typet::POINTER:
-    values.insert(std::make_shared<constant_pointer_abstract_objectt>(type));
-    break;
-  case abstract_typet::CONSTANT:
-    values.insert(std::make_shared<constant_abstract_valuet>(type));
-    break;
-  case abstract_typet::UNSUPPORTED:
-    UNREACHABLE;
-  }
+  values.insert(std::make_shared<constant_abstract_valuet>(type));
   verify();
 }
 
@@ -145,22 +123,10 @@ value_set_abstract_objectt::value_set_abstract_objectt(
   const typet &type,
   bool top,
   bool bottom)
-  : abstract_value_objectt(type, top, bottom),
-    my_type(type_to_abstract_type(type))
+  : abstract_value_objectt(type, top, bottom)
 {
-  switch(my_type)
-  {
-  case abstract_typet::POINTER:
-    values.insert(
-      std::make_shared<constant_pointer_abstract_objectt>(type, top, bottom));
-    break;
-  case abstract_typet::CONSTANT:
-    values.insert(
-      std::make_shared<constant_abstract_valuet>(type, top, bottom));
-    break;
-  case abstract_typet::UNSUPPORTED:
-    UNREACHABLE;
-  }
+  values.insert(
+    std::make_shared<constant_abstract_valuet>(type, top, bottom));
   verify();
 }
 
@@ -168,22 +134,10 @@ value_set_abstract_objectt::value_set_abstract_objectt(
   const exprt &expr,
   const abstract_environmentt &environment,
   const namespacet &ns)
-  : abstract_value_objectt(expr.type(), false, false),
-    my_type(type_to_abstract_type(expr.type()))
+  : abstract_value_objectt(expr.type(), false, false)
 {
-  switch(my_type)
-  {
-  case abstract_typet::POINTER:
-    values.insert(std::make_shared<constant_pointer_abstract_objectt>(
-      expr, environment, ns));
-    break;
-  case abstract_typet::CONSTANT:
-    values.insert(
-      std::make_shared<constant_abstract_valuet>(expr, environment, ns));
-    break;
-  case abstract_typet::UNSUPPORTED:
-    UNREACHABLE;
-  }
+  values.insert(
+    std::make_shared<constant_abstract_valuet>(expr, environment, ns));
   verify();
 }
 
@@ -289,31 +243,18 @@ abstract_object_pointert value_set_abstract_objectt::resolve_values(
 
   auto unwrapped_values = unwrap_and_extract_values(new_values);
 
-  abstract_typet new_type = get_type(*unwrapped_values.begin());
-  if(
-    unwrapped_values.size() > max_value_set_size &&
-    new_type == abstract_typet::CONSTANT)
+  if(unwrapped_values.size() > max_value_set_size)
   {
     return to_interval(unwrapped_values);
   }
-  if(unwrapped_values.size() == 1 && new_type == abstract_typet::UNSUPPORTED)
-  {
-    return (*unwrapped_values.begin());
-  }
+  //if(unwrapped_values.size() == 1)
+  //{
+  //  return (*unwrapped_values.begin());
+  //}
 
   auto result =
     std::dynamic_pointer_cast<value_set_abstract_objectt>(mutable_clone());
-
-  if(
-    unwrapped_values.size() > max_value_set_size ||
-    new_type == abstract_typet::UNSUPPORTED)
-  {
-    result->set_top();
-  }
-  else
-  {
-    result->set_values(unwrapped_values);
-  }
+  result->set_values(unwrapped_values);
   return result;
 }
 
@@ -322,7 +263,7 @@ value_set_abstract_objectt::merge(abstract_object_pointert other) const
 {
   auto cast_other =
     std::dynamic_pointer_cast<const value_set_abstract_objectt>(other);
-  if(cast_other && cast_other->get_my_type() == get_my_type())
+  if(cast_other)
   {
     auto union_values = values;
     union_values.insert(
@@ -337,10 +278,6 @@ abstract_object_pointert value_set_abstract_objectt::to_interval(
   const abstract_object_sett &other_values) const
 {
   PRECONDITION(!other_values.empty());
-  if(get_type(*other_values.begin()) == abstract_typet::POINTER)
-    return std::make_shared<constant_pointer_abstract_objectt>(
-      type(), true, false);
-  PRECONDITION(get_type(*other_values.begin()) == abstract_typet::CONSTANT);
 
   exprt lower_expr = (*other_values.begin())->to_constant();
   exprt upper_expr = (*other_values.begin())->to_constant();
@@ -354,24 +291,11 @@ abstract_object_pointert value_set_abstract_objectt::to_interval(
     constant_interval_exprt(lower_expr, upper_expr));
 }
 
-bool value_set_abstract_objectt::verify() const
-{
-  CHECK_RETURN(my_type != abstract_typet::UNSUPPORTED);
-  for(const auto &value : values)
-  {
-    CHECK_RETURN(
-      !std::dynamic_pointer_cast<const context_abstract_objectt>(value));
-    CHECK_RETURN(get_type(value) == my_type);
-  }
-  return true;
-}
-
 void value_set_abstract_objectt::set_values(
   const abstract_object_sett &other_values)
 {
   PRECONDITION(!other_values.empty());
   set_not_top();
-  my_type = get_type(*other_values.begin());
   values = other_values;
   verify();
 }
@@ -421,43 +345,6 @@ void value_set_abstract_objectt::output(
     }
     out << " :value-set-end";
   }
-}
-
-value_set_abstract_objectt::abstract_typet
-get_type(const abstract_object_pointert &other)
-{
-  using abstract_typet = value_set_abstract_objectt::abstract_typet;
-
-  PRECONDITION(
-    !std::dynamic_pointer_cast<const context_abstract_objectt>(other));
-  PRECONDITION(!std::dynamic_pointer_cast<const abstract_aggregate_tag>(other));
-  PRECONDITION(
-    !std::dynamic_pointer_cast<const value_set_abstract_objectt>(other));
-
-  if(std::dynamic_pointer_cast<const constant_pointer_abstract_objectt>(other))
-    return abstract_typet::POINTER;
-  if(std::dynamic_pointer_cast<const constant_abstract_valuet>(other))
-    return abstract_typet::CONSTANT;
-  UNREACHABLE;
-  return abstract_typet::UNSUPPORTED;
-}
-
-value_set_abstract_objectt::abstract_typet
-type_to_abstract_type(const typet &type)
-{
-  using abstract_typet = value_set_abstract_objectt::abstract_typet;
-
-  if(type.id() == ID_pointer)
-    return abstract_typet::POINTER;
-
-  if(
-    type.id() == ID_signedbv || type.id() == ID_unsignedbv ||
-    type.id() == ID_fixedbv || type.id() == ID_c_bool || type.id() == ID_bool ||
-    type.id() == ID_integer || type.id() == ID_c_bit_field ||
-    type.id() == ID_floatbv)
-    return abstract_typet::CONSTANT;
-
-  return abstract_typet::UNSUPPORTED;
 }
 
 exprt rewrite_expression(
