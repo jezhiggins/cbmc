@@ -16,14 +16,36 @@
 
 #include <analyses/variable-sensitivity/abstract_value_object.h>
 
-class value_set_abstract_objectt : public abstract_value_objectt
-{
+class abstract_object_sett {
 public:
-  using abstract_object_sett = std::unordered_set<
+  using value_sett = std::unordered_set<
     abstract_object_pointert,
     abstract_hashert,
     abstract_equalert>;
+  using const_iterator = value_sett::const_iterator;
+  using value_type = value_sett::value_type;
+  using size_type = value_sett::size_type;
 
+  void insert(const abstract_object_pointert &o) { values.insert(o); }
+  void insert(abstract_object_pointert &&o) { values.insert(std::move(o)); }
+  void insert(const abstract_object_sett &rhs) { values.insert(rhs.begin(), rhs.end()); }
+
+  const_iterator begin() const { return values.begin(); }
+  const_iterator end() const { return values.end(); }
+
+  value_sett::size_type size() const { return values.size(); }
+  bool empty() const { return values.empty(); }
+
+  bool operator==(const abstract_object_sett &rhs) const {
+    return values == rhs.values;
+  }
+private:
+  value_sett values;
+};
+
+class value_set_abstract_objectt : public abstract_value_objectt
+{
+public:
   /// \copydoc abstract_objectt::abstract_objectt(const typet&)
   explicit value_set_abstract_objectt(const typet &type);
 

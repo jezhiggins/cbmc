@@ -16,8 +16,6 @@
 #include <analyses/variable-sensitivity/two_value_array_abstract_object.h>
 #include <analyses/variable-sensitivity/value_set_abstract_object.h>
 
-using abstract_object_sett = value_set_abstract_objectt::abstract_object_sett;
-
 class value_set_index_ranget : public index_ranget
 {
 public:
@@ -202,9 +200,9 @@ abstract_object_pointert value_set_abstract_objectt::evaluate_conditional(
 
   abstract_object_sett resulting_objects;
   if(all_true || indeterminate)
-    resulting_objects.insert(true_result.begin(), true_result.end());
+    resulting_objects.insert(true_result);
   if(all_false || indeterminate)
-    resulting_objects.insert(false_result.begin(), false_result.end());
+    resulting_objects.insert(false_result);
   return resolve_new_values(resulting_objects, env);
 }
 
@@ -266,8 +264,7 @@ value_set_abstract_objectt::merge(abstract_object_pointert other) const
   if(cast_other)
   {
     auto union_values = values;
-    union_values.insert(
-      cast_other->get_values().begin(), cast_other->get_values().end());
+    union_values.insert(cast_other->get_values());
     return resolve_values(union_values);
   }
 
