@@ -93,6 +93,26 @@ value_set_pointer_abstract_objectt::value_set_pointer_abstract_objectt(
     expr, environment, ns));
 }
 
+abstract_object_pointert value_set_pointer_abstract_objectt::read_dereference(
+  const abstract_environmentt &env,
+  const namespacet &ns) const
+{
+  if(is_top() || is_bottom())
+  {
+    return env.abstract_object_factory(
+      type().subtype(), ns, is_top(), !is_top());
+  }
+
+  abstract_object_sett results;
+  for (auto value : values) {
+    auto pointer = std::dynamic_pointer_cast<const abstract_pointer_objectt>(value);
+    results.insert(pointer->read_dereference(env, ns));
+  }
+
+  return results.first();
+}
+
+
 abstract_object_pointert value_set_pointer_abstract_objectt::resolve_new_values(
   const abstract_object_sett &new_values,
   const abstract_environmentt &environment) const

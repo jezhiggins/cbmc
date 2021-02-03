@@ -53,6 +53,10 @@ public:
   /// either converted to interval or marked as `top`.
   static const size_t max_value_set_size = 10;
 
+  abstract_object_pointert read_dereference(
+    const abstract_environmentt &env,
+    const namespacet &ns) const override;
+
   void output(std::ostream &out, const ai_baset &ai, const namespacet &ns)
     const override;
 
