@@ -14,13 +14,6 @@
 #include <analyses/variable-sensitivity/context_abstract_object.h>
 #include <analyses/variable-sensitivity/value_set_pointer_abstract_object.h>
 
-static exprt rewrite_expression(
-  const exprt &expr,
-  const std::vector<abstract_object_pointert> &ops);
-
-static std::vector<abstract_object_sett>
-unwrap_operands(const std::vector<abstract_object_pointert> &operands);
-
 static abstract_object_sett
 unwrap_and_extract_values(const abstract_object_sett &values);
 
@@ -100,81 +93,6 @@ value_set_pointer_abstract_objectt::value_set_pointer_abstract_objectt(
     expr, environment, ns));
 }
 
-abstract_object_pointert value_set_pointer_abstract_objectt::expression_transform(
-  const exprt &expr,
-  const std::vector<abstract_object_pointert> &operands,
-  const abstract_environmentt &environment,
-  const namespacet &ns) const
-{
-  PRECONDITION(operands.size() == expr.operands().size());
-
-  auto collective_operands = unwrap_operands(operands);
-
-  if(expr.id() == ID_if)
-    return evaluate_conditional(
-      expr.type(), collective_operands, environment, ns);
-
-  abstract_object_sett resulting_objects;
-
-  auto dispatcher = values.first();
-  for_each_comb(
-    collective_operands,
-    [&resulting_objects, &dispatcher, &expr, &environment, &ns](
-      const std::vector<abstract_object_pointert> &ops) {
-      auto rewritten_expr = rewrite_expression(expr, ops);
-      resulting_objects.insert(
-        dispatcher->expression_transform(rewritten_expr, ops, environment, ns));
-    });
-
-  return resolve_new_values(resulting_objects, environment);
-}
-
-abstract_object_pointert value_set_pointer_abstract_objectt::evaluate_conditional(
-  const typet &type,
-  const std::vector<abstract_object_sett> &operands,
-  const abstract_environmentt &env,
-  const namespacet &ns) const
-{
-  auto const condition = operands[0];
-
-  auto const true_result = operands[1];
-  auto const false_result = operands[2];
-
-  auto all_true = true;
-  auto all_false = true;
-  for(auto v : condition)
-  {
-    auto expr = v->to_constant();
-    all_true = all_true && expr.is_true();
-    all_false = all_false && expr.is_false();
-  }
-  auto indeterminate = !all_true && !all_false;
-
-  abstract_object_sett resulting_objects;
-  if(all_true || indeterminate)
-    resulting_objects.insert(true_result);
-  if(all_false || indeterminate)
-    resulting_objects.insert(false_result);
-  return resolve_new_values(resulting_objects, env);
-}
-
-abstract_object_pointert value_set_pointer_abstract_objectt::write(
-  abstract_environmentt &environment,
-  const namespacet &ns,
-  const std::stack<exprt> &stack,
-  const exprt &specifier,
-  const abstract_object_pointert &value,
-  bool merging_write) const
-{
-  abstract_object_sett new_values;
-  for(const auto &st_value : values)
-  {
-    new_values.insert(
-      st_value->write(environment, ns, stack, specifier, value, merging_write));
-  }
-  return resolve_new_values(new_values, environment);
-}
-
 abstract_object_pointert value_set_pointer_abstract_objectt::resolve_new_values(
   const abstract_object_sett &new_values,
   const abstract_environmentt &environment) const
@@ -251,33 +169,6 @@ void value_set_pointer_abstract_objectt::output(
 
     out << " :value-set-end";
   }
-}
-
-exprt rewrite_expression(
-  const exprt &expr,
-  const std::vector<abstract_object_pointert> &ops)
-{
-  auto operands_expr = exprt::operandst{};
-  for(auto v : ops)
-    operands_expr.push_back(v->to_constant());
-  auto rewritten_expr = exprt(expr.id(), expr.type(), std::move(operands_expr));
-  return rewritten_expr;
-}
-
-std::vector<abstract_object_sett>
-unwrap_operands(const std::vector<abstract_object_pointert> &operands)
-{
-  auto unwrapped = std::vector<abstract_object_sett>{};
-
-  for(const auto &op : operands)
-  {
-    auto vsab = std::dynamic_pointer_cast<const value_set_tag>(
-      maybe_unwrap_context(op));
-    INVARIANT(vsab, "should be a value set abstract object");
-    unwrapped.push_back(vsab->get_values());
-  }
-
-  return unwrapped;
 }
 
 abstract_object_sett
