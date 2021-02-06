@@ -10,6 +10,7 @@
 #include <analyses/variable-sensitivity/abstract_object.h>
 #include <analyses/variable-sensitivity/constant_abstract_value.h>
 #include <analyses/variable-sensitivity/variable_sensitivity_object_factory.h>
+#include <ansi_c_language.h>
 #include <testing-utils/use_catch.h>
 #include <util/arith_tools.h>
 #include <util/mathematical_types.h>
@@ -17,45 +18,32 @@
 #include <util/symbol_table.h>
 
 static std::shared_ptr<value_set_abstract_objectt>
-  make_value_set(exprt val, abstract_environmentt &env, namespacet &ns)
-{
-  return std::make_shared<value_set_abstract_objectt>(val, env, ns);
-}
+make_value_set(exprt val, abstract_environmentt &env, namespacet &ns);
 
 static std::shared_ptr<const constant_abstract_valuet>
-make_constant(exprt val, abstract_environmentt &env, namespacet &ns)
-{
-  return std::make_shared<constant_abstract_valuet>(val, env, ns);
-}
+make_constant(exprt val, abstract_environmentt &env, namespacet &ns);
 
 static std::shared_ptr<value_set_abstract_objectt>
-make_value_set(const std::vector<exprt> &vals, abstract_environmentt &env, namespacet &ns)
-{
-  auto initial_values = abstract_object_sett { };
-  for (auto v : vals)
-    initial_values.insert(make_constant(v, env, ns));
-  auto vs = make_value_set(vals[0], env, ns);
-  vs->set_values(initial_values);
-  return vs;
-}
+make_value_set(const std::vector<exprt> &vals, abstract_environmentt &env, namespacet &ns);
 
 static std::shared_ptr<const value_set_abstract_objectt>
-  as_value_set(const abstract_object_pointert &aop)
+as_value_set(const abstract_object_pointert &aop);
+
+static bool set_contains(const abstract_object_sett &set, const exprt &val);
+
+static void EXPECT(
+  std::shared_ptr<const value_set_abstract_objectt> &result,
+  const std::vector<exprt> &expected_values);
+
+static void EXPECT_UNMODIFIED(
+  std::shared_ptr<const value_set_abstract_objectt> &result,
+  bool modified,
+  const std::vector<exprt> &expected_values)
 {
-  return std::dynamic_pointer_cast<const value_set_abstract_objectt>(aop);
+  CHECK_FALSE(modified);
+  EXPECT(result, expected_values);
 }
 
-static bool
-set_contains(const abstract_object_sett &set, const exprt val)
-{
-  auto i = std::find_if(set.begin(), set.end(),
-    [&val](const abstract_object_pointert &lhs)
-    {
-      auto l = lhs->to_constant();
-      return l == val;
-    });
-  return i != set.end();
-}
 
 SCENARIO(
   "merging two value_set_abstract_objects",
@@ -87,18 +75,7 @@ SCENARIO(
 
       THEN("the result { 1 } is unchanged ")
       {
-        // Though we may become top or bottom, the type should be unchanged
-        REQUIRE(value_set_result);
-
-        // Correctness of merge
-        REQUIRE_FALSE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
-        REQUIRE(value_set_result->get_values().size() == 1);
-        REQUIRE(value_set_result->to_constant() == val1);
-
-        // Is optimal
-        REQUIRE(result == op1);
+        EXPECT_UNMODIFIED(value_set_result, modified, { val1 });
       }
     }
 
@@ -114,18 +91,7 @@ SCENARIO(
 
       THEN("the result is { 1, 2 }")
       {
-        REQUIRE(value_set_result);
-
-        // Correctness of merge
-        REQUIRE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
-
-        auto values = value_set_result->get_values();
-        REQUIRE(values.size() == 2);
-
-        REQUIRE(set_contains(values, val1));
-        REQUIRE(set_contains(values, val2));
+        EXPECT(value_set_result, { val1, val2 });
       }
     }
 
@@ -141,18 +107,7 @@ SCENARIO(
 
       THEN("the result { 1, 2 } is unchanged")
       {
-        REQUIRE(value_set_result);
-
-        // Correctness of merge
-        REQUIRE_FALSE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
-
-        auto values = value_set_result->get_values();
-        REQUIRE(values.size() == 2);
-
-        REQUIRE(set_contains(values, val1));
-        REQUIRE(set_contains(values, val2));
+        EXPECT_UNMODIFIED(value_set_result, modified, { val1, val2 });
       }
     }
 
@@ -168,20 +123,7 @@ SCENARIO(
 
       THEN("the result is { 1, 2, 3, 4 }")
       {
-        REQUIRE(value_set_result);
-
-        // Correctness of merge
-        REQUIRE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
-
-        auto values = value_set_result->get_values();
-        REQUIRE(values.size() == 4);
-
-        REQUIRE(set_contains(values, val1));
-        REQUIRE(set_contains(values, val2));
-        REQUIRE(set_contains(values, val3));
-        REQUIRE(set_contains(values, val4));
+        EXPECT(value_set_result, { val1, val2, val3, val4 });
       }
     }
 
@@ -197,20 +139,7 @@ SCENARIO(
 
       THEN("the result is { 1, 2, 3, 4 }")
       {
-        REQUIRE(value_set_result);
-
-        // Correctness of merge
-        REQUIRE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
-
-        auto values = value_set_result->get_values();
-        REQUIRE(values.size() == 4);
-
-        REQUIRE(set_contains(values, val1));
-        REQUIRE(set_contains(values, val2));
-        REQUIRE(set_contains(values, val3));
-        REQUIRE(set_contains(values, val4));
+        EXPECT(value_set_result, { val1, val2, val3, val4 });
       }
     }
   }
@@ -220,7 +149,7 @@ SCENARIO(
   "merging a value_set with a constant",
   "[core][analyses][variable-sensitivity][value_set_abstract_object][merge]")
 {
-  GIVEN("Two value sets")
+  GIVEN("A value set and a constant")
   {
     const exprt val1 = from_integer(1, integer_typet());
     const exprt val2 = from_integer(2, integer_typet());
@@ -246,18 +175,7 @@ SCENARIO(
 
       THEN("the result { 1 } is unchanged ")
       {
-        // Though we may become top or bottom, the type should be unchanged
-        REQUIRE(value_set_result);
-
-        // Correctness of merge
-        REQUIRE_FALSE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
-        REQUIRE(value_set_result->get_values().size() == 1);
-        REQUIRE(value_set_result->to_constant() == val1);
-
-        // Is optimal
-        REQUIRE(result == op1);
+        EXPECT_UNMODIFIED(value_set_result, modified, { val1 });
       }
     }
 
@@ -271,21 +189,100 @@ SCENARIO(
 
       auto value_set_result = as_value_set(result);
 
-      THEN("the result { 1, 2 }")
+      THEN("the result is { 1, 2 }")
       {
-        REQUIRE(value_set_result);
+        EXPECT(value_set_result, { val1, val2 });
+      }
+    }
 
-        // Correctness of merge
-        REQUIRE(modified);
-        REQUIRE_FALSE(value_set_result->is_top());
-        REQUIRE_FALSE(value_set_result->is_bottom());
+    WHEN("merging { 1, 2 } with 2")
+    {
+      auto op1 = make_value_set({ val1, val2 }, environment, ns);
+      auto op2 = make_constant(val2, environment, ns);
 
-        auto values = value_set_result->get_values();
-        REQUIRE(values.size() == 2);
+      bool modified;
+      auto result = abstract_objectt::merge(op1, op2, modified);
 
-        REQUIRE(set_contains(values, val1));
-        REQUIRE(set_contains(values, val2));
+      auto value_set_result = as_value_set(result);
+
+      THEN("the result { 1, 2 } is unchanged")
+      {
+        EXPECT_UNMODIFIED(value_set_result, modified, { val1, val2 });
       }
     }
   }
 }
+
+static std::shared_ptr<value_set_abstract_objectt>
+make_value_set(exprt val, abstract_environmentt &env, namespacet &ns)
+{
+  return std::make_shared<value_set_abstract_objectt>(val, env, ns);
+}
+
+static std::shared_ptr<const constant_abstract_valuet>
+make_constant(exprt val, abstract_environmentt &env, namespacet &ns)
+{
+  return std::make_shared<constant_abstract_valuet>(val, env, ns);
+}
+
+static std::shared_ptr<value_set_abstract_objectt>
+make_value_set(const std::vector<exprt> &vals, abstract_environmentt &env, namespacet &ns)
+{
+  auto initial_values = abstract_object_sett { };
+  for (auto v : vals)
+    initial_values.insert(make_constant(v, env, ns));
+  auto vs = make_value_set(vals[0], env, ns);
+  vs->set_values(initial_values);
+  return vs;
+}
+
+static std::shared_ptr<const value_set_abstract_objectt>
+as_value_set(const abstract_object_pointert &aop)
+{
+  return std::dynamic_pointer_cast<const value_set_abstract_objectt>(aop);
+}
+
+static bool
+set_contains(const abstract_object_sett &set, const exprt &val)
+{
+  auto i = std::find_if(set.begin(), set.end(),
+                        [&val](const abstract_object_pointert &lhs)
+                        {
+                          auto l = lhs->to_constant();
+                          return l == val;
+                        });
+  return i != set.end();
+}
+
+std::string expr_to_str(const exprt &expr)
+{
+  auto st = symbol_tablet{};
+  auto ns = namespacet{st};
+  auto expr_str = std::string{};
+
+  auto lang = new_ansi_c_language();
+  lang->from_expr(expr, expr_str, ns);
+
+  return expr_str;
+}
+
+static void EXPECT(
+  std::shared_ptr<const value_set_abstract_objectt> &result,
+  const std::vector<exprt>& expected_values)
+{
+  REQUIRE(result);
+
+  // Correctness of merge
+  REQUIRE_FALSE(result->is_top());
+  REQUIRE_FALSE(result->is_bottom());
+
+  auto values = result->get_values();
+  REQUIRE(values.size() == expected_values.size());
+
+  for(auto &ev : expected_values) {
+    INFO("Expect result to include " + expr_to_str(ev));
+    REQUIRE(set_contains(values, ev));
+  }
+}
+
+
