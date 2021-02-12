@@ -12,8 +12,8 @@
 #ifndef CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_ABSTRACT_OBJECT_H
 #define CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_ABSTRACT_OBJECT_H
 
-#include <analyses/variable-sensitivity/abstract_value_object.h>
 #include <analyses/variable-sensitivity/abstract_object_set.h>
+#include <analyses/variable-sensitivity/abstract_value_object.h>
 
 class value_set_abstract_objectt : public abstract_value_objectt,
                                    public value_set_tag
@@ -30,7 +30,8 @@ public:
     const abstract_environmentt &environment,
     const namespacet &ns);
 
-  index_range_ptrt index_range(const namespacet &ns) const override;
+  index_range_implementation_ptrt
+  range_implementation(const namespacet &ns) const override;
 
   /// \copydoc abstract_objectt::to_constant
   exprt to_constant() const override
@@ -118,6 +119,11 @@ private:
   /// \return the interval-abstract-object containing \p other_values
   abstract_object_pointert
   to_interval(const abstract_object_sett &other_values) const;
+
+  virtual void set_top_internal()
+  {
+    values.clear();
+  }
 };
 
 #endif // CPROVER_ANALYSES_VARIABLE_SENSITIVITY_VALUE_SET_ABSTRACT_OBJECT_H
