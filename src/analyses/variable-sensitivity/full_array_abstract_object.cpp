@@ -34,14 +34,14 @@ abstract_object_pointert apply_to_index_range(
                        ->index_range(ns);
 
   sharing_ptrt<abstract_objectt> result = nullptr;
-  for (const auto &index : *index_range)
+  for(const auto &index : index_range)
   {
     auto at_index = fn(index_exprt(index_expr.array(), index));
 
     result = (result == nullptr) ? at_index
                                  : abstract_objectt::merge(result, at_index);
 
-    if (result->is_top()) // no point in continuing once we've gone top
+    if(result->is_top()) // no point in continuing once we've gone top
       break;
   }
   return result;
