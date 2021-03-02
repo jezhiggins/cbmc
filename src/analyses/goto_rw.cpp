@@ -775,16 +775,8 @@ void goto_rw(
     break;
 
   case RETURN:
-    {
-      const code_returnt &code_return=
-        to_code_return(target->code);
-      if(code_return.has_return_value())
-        rw_set.get_objects_rec(
-          function,
-          target,
-          rw_range_sett::get_modet::READ,
-          code_return.return_value());
-    }
+    rw_set.get_objects_rec(
+      function, target, rw_range_sett::get_modet::READ, target->return_value());
     break;
 
   case OTHER:
@@ -815,20 +807,13 @@ void goto_rw(
 
   case DEAD:
     rw_set.get_objects_rec(
-      function,
-      target,
-      rw_range_sett::get_modet::LHS_W,
-      to_code_dead(target->code).symbol());
+      function, target, rw_range_sett::get_modet::LHS_W, target->dead_symbol());
     break;
 
   case DECL:
+    rw_set.get_objects_rec(function, target, target->decl_symbol().type());
     rw_set.get_objects_rec(
-      function, target, to_code_decl(target->code).symbol().type());
-    rw_set.get_objects_rec(
-      function,
-      target,
-      rw_range_sett::get_modet::LHS_W,
-      to_code_decl(target->code).symbol());
+      function, target, rw_range_sett::get_modet::LHS_W, target->decl_symbol());
     break;
 
   case FUNCTION_CALL:

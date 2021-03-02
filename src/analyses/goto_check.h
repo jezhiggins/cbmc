@@ -39,7 +39,11 @@ void goto_check(
   "overflow-check)"                                                            \
   "(pointer-overflow-check)(conversion-check)(undefined-shift-check)"          \
   "(float-overflow-check)(nan-check)(no-built-in-assertions)"                  \
-  "(pointer-primitive-check)"
+  "(pointer-primitive-check)"                                                  \
+  "(retain-trivial-checks)"                                                    \
+  "(error-label):"                                                             \
+  "(no-assertions)(no-assumptions)"                                            \
+  "(assert-to-assume)"
 
 // clang-format off
 #define HELP_GOTO_CHECK \
@@ -54,9 +58,15 @@ void goto_check(
   " --undefined-shift-check      check shift greater than bit-width\n" \
   " --float-overflow-check       check floating-point for +/-Inf\n" \
   " --nan-check                  check floating-point for NaN\n" \
-  " --no-built-in-assertions     ignore assertions in built-in library\n" \
   " --enum-range-check           checks that all enum type expressions have values in the enum range\n" /* NOLINT(whitespace/line_length) */ \
-  " --pointer-primitive-check    checks that all pointers in pointer primitives are valid or null\n" /* NOLINT(whitespace/line_length) */
+  " --pointer-primitive-check    checks that all pointers in pointer primitives are valid or null\n" /* NOLINT(whitespace/line_length) */ \
+  " --no-built-in-assertions     ignore assertions in built-in library\n" \
+  " --retain-trivial-checks      include checks that are trivially true\n" \
+  " --error-label label          check that label is unreachable\n" \
+  " --no-built-in-assertions     ignore assertions in built-in library\n" \
+  " --no-assertions              ignore user assertions\n" \
+  " --no-assumptions             ignore user assumptions\n" \
+  " --assert-to-assume           convert user assertions to assumptions\n" \
 
 #define PARSE_OPTIONS_GOTO_CHECK(cmdline, options) \
   options.set_option("bounds-check", cmdline.isset("bounds-check")); \
@@ -72,7 +82,16 @@ void goto_check(
   options.set_option("float-overflow-check", cmdline.isset("float-overflow-check")); /* NOLINT(whitespace/line_length) */  \
   options.set_option("nan-check", cmdline.isset("nan-check")); \
   options.set_option("built-in-assertions", !cmdline.isset("no-built-in-assertions")); /* NOLINT(whitespace/line_length) */ \
-  options.set_option("pointer-primitive-check", cmdline.isset("pointer-primitive-check")) /* NOLINT(whitespace/line_length) */
+  options.set_option("pointer-primitive-check", cmdline.isset("pointer-primitive-check")); /* NOLINT(whitespace/line_length) */ \
+  options.set_option("retain-trivial-checks", \
+                     cmdline.isset("retain-trivial-checks")); \
+  options.set_option("assertions", !cmdline.isset("no-assertions")); /* NOLINT(whitespace/line_length) */ \
+  options.set_option("assumptions", !cmdline.isset("no-assumptions")); /* NOLINT(whitespace/line_length) */ \
+  options.set_option("assert-to-assume", cmdline.isset("assert-to-assume")); /* NOLINT(whitespace/line_length) */ \
+  options.set_option("retain-trivial", cmdline.isset("retain-trivial")); /* NOLINT(whitespace/line_length) */ \
+  if(cmdline.isset("error-label")) \
+    options.set_option("error-label", cmdline.get_values("error-label")); \
+  (void)0
 // clang-format on
 
 #endif // CPROVER_ANALYSES_GOTO_CHECK_H

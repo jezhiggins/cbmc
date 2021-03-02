@@ -71,11 +71,11 @@ void interval_domaint::transform(
   switch(instruction.type)
   {
   case DECL:
-    havoc_rec(to_code_decl(instruction.code).symbol());
+    havoc_rec(instruction.decl_symbol());
     break;
 
   case DEAD:
-    havoc_rec(to_code_dead(instruction.code).symbol());
+    havoc_rec(instruction.dead_symbol());
     break;
 
   case ASSIGN:

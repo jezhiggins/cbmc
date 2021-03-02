@@ -285,12 +285,12 @@ void full_slicert::operator()(
       jumps.push_back(instruction_node_index);
     else if(instruction->is_decl())
     {
-      const auto &s = to_code_decl(instruction->code).symbol();
+      const auto &s = instruction->decl_symbol();
       decl_dead[s.get_identifier()].push(instruction_node_index);
     }
     else if(instruction->is_dead())
     {
-      const auto &s = to_code_dead(instruction->code).symbol();
+      const auto &s = instruction->dead_symbol();
       decl_dead[s.get_identifier()].push(instruction_node_index);
     }
   }

@@ -94,7 +94,7 @@ void goto_program2codet::build_dead_map()
   {
     if(instruction.is_dead())
     {
-      dead_map[instruction.get_dead().get_identifier()] =
+      dead_map[instruction.dead_symbol().get_identifier()] =
         instruction.location_number;
     }
   }
@@ -418,14 +418,12 @@ goto_programt::const_targett goto_program2codet::convert_return(
   goto_programt::const_targett upper_bound,
   code_blockt &dest)
 {
-  const code_returnt &ret = target->get_return();
-
   // add return instruction unless original code was missing a return
-  if(!ret.has_return_value() ||
-     ret.return_value().id()!=ID_side_effect ||
-     to_side_effect_expr(ret.return_value()).get_statement()!=ID_nondet)
+  if(
+    target->return_value().id() != ID_side_effect ||
+    to_side_effect_expr(target->return_value()).get_statement() != ID_nondet)
   {
-    dest.add(ret);
+    dest.add(code_returnt{target->return_value()});
   }
 
   // all v3 (or later) goto programs have an explicit GOTO after return
@@ -450,7 +448,7 @@ goto_programt::const_targett goto_program2codet::convert_decl(
   goto_programt::const_targett upper_bound,
   code_blockt &dest)
 {
-  code_declt d = target->get_decl();
+  code_declt d = code_declt{target->decl_symbol()};
   symbol_exprt &symbol = d.symbol();
 
   goto_programt::const_targett next=target;
@@ -477,7 +475,7 @@ goto_programt::const_targett goto_program2codet::convert_decl(
     {
       if(next->is_assign())
       {
-        d.copy_to_operands(next->get_assign().rhs());
+        d.set_initial_value({next->get_assign().rhs()});
       }
       else
       {

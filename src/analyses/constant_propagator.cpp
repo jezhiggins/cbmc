@@ -158,8 +158,7 @@ void constant_propagator_domaint::transform(
 
   if(from->is_decl())
   {
-    const auto &code_decl = from->get_decl();
-    const symbol_exprt &symbol = code_decl.symbol();
+    const symbol_exprt &symbol = from->decl_symbol();
     values.set_to_top(symbol);
   }
   else if(from->is_assign())
@@ -191,8 +190,7 @@ void constant_propagator_domaint::transform(
   }
   else if(from->is_dead())
   {
-    const auto &code_dead = from->get_dead();
-    values.set_to_top(code_dead.symbol());
+    values.set_to_top(from->dead_symbol());
   }
   else if(from->is_function_call())
   {
@@ -752,8 +750,10 @@ void constant_propagator_ait::replace(
 {
   Forall_goto_program_instructions(it, goto_function.body)
   {
-    // Works because this is a location (but not history) sensitive domain
-    const constant_propagator_domaint &d = (*this)[it];
+    auto const current_domain_ptr =
+      std::dynamic_pointer_cast<const constant_propagator_domaint>(
+        this->abstract_state_before(it));
+    const constant_propagator_domaint &d = *current_domain_ptr;
 
     if(d.is_bottom())
       continue;

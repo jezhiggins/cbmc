@@ -374,6 +374,16 @@ void goto_convertt::clean_expr(
         clean_expr(side_effect_assign.lhs(), dest, mode);
         exprt lhs = side_effect_assign.lhs();
 
+        const bool must_use_rhs = needs_cleaning(lhs);
+        if(must_use_rhs)
+        {
+          remove_function_call(
+            to_side_effect_expr_function_call(side_effect_assign.rhs()),
+            dest,
+            mode,
+            true);
+        }
+
         // turn into code
         code_assignt assignment;
         assignment.lhs()=lhs;
@@ -382,7 +392,7 @@ void goto_convertt::clean_expr(
         convert_assign(assignment, dest, mode);
 
         if(result_is_used)
-          expr.swap(lhs);
+          expr = must_use_rhs ? side_effect_assign.rhs() : lhs;
         else
           expr.make_nil();
         return;
@@ -409,7 +419,8 @@ void goto_convertt::clean_expr(
 
   if(expr.id()==ID_side_effect)
   {
-    remove_side_effect(to_side_effect_expr(expr), dest, mode, result_is_used);
+    remove_side_effect(
+      to_side_effect_expr(expr), dest, mode, result_is_used, false);
   }
   else if(expr.id()==ID_compound_literal)
   {
@@ -482,7 +493,7 @@ void goto_convertt::clean_expr_address_of(
   }
   else if(expr.id() == ID_side_effect)
   {
-    remove_side_effect(to_side_effect_expr(expr), dest, mode, true);
+    remove_side_effect(to_side_effect_expr(expr), dest, mode, true, true);
   }
   else
     Forall_operands(it, expr)

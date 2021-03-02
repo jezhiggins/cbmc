@@ -240,8 +240,7 @@ void goto_programt::get_decl_identifiers(
       DATA_INVARIANT(
         instruction.code.operands().size() == 1,
         "declaration statement expects one operand");
-      const symbol_exprt &symbol_expr = to_symbol_expr(instruction.code.op0());
-      decl_identifiers.insert(symbol_expr.get_identifier());
+      decl_identifiers.insert(instruction.decl_symbol().get_identifier());
     }
   }
 }
@@ -285,8 +284,7 @@ std::list<exprt> expressions_read(
     break;
 
   case RETURN:
-    if(instruction.get_return().return_value().is_not_nil())
-      dest.push_back(instruction.get_return().return_value());
+    dest.push_back(instruction.return_value());
     break;
 
   case FUNCTION_CALL:
@@ -871,9 +869,9 @@ void goto_programt::instructiont::validate(
       source_location);
     DATA_CHECK_WITH_DIAGNOSTICS(
       vm,
-      !ns.lookup(get_decl().get_identifier(), table_symbol),
+      !ns.lookup(decl_symbol().get_identifier(), table_symbol),
       "declared symbols should be known",
-      id2string(get_decl().get_identifier()),
+      id2string(decl_symbol().get_identifier()),
       source_location);
     break;
   case DEAD:
@@ -884,9 +882,9 @@ void goto_programt::instructiont::validate(
       source_location);
     DATA_CHECK_WITH_DIAGNOSTICS(
       vm,
-      !ns.lookup(get_dead().get_identifier(), table_symbol),
+      !ns.lookup(dead_symbol().get_identifier(), table_symbol),
       "removed symbols should be known",
-      id2string(get_dead().get_identifier()),
+      id2string(dead_symbol().get_identifier()),
       source_location);
     break;
   case FUNCTION_CALL:
@@ -928,13 +926,9 @@ void goto_programt::instructiont::transform(
 
   case RETURN:
   {
-    auto new_return_value = f(get_return().return_value());
+    auto new_return_value = f(return_value());
     if(new_return_value.has_value())
-    {
-      auto new_return = get_return();
-      new_return.return_value() = *new_return_value;
-      set_return(new_return);
-    }
+      return_value() = *new_return_value;
   }
   break;
 
@@ -954,25 +948,17 @@ void goto_programt::instructiont::transform(
 
   case DECL:
   {
-    auto new_symbol = f(get_decl().symbol());
+    auto new_symbol = f(decl_symbol());
     if(new_symbol.has_value())
-    {
-      auto new_decl = get_decl();
-      new_decl.symbol() = to_symbol_expr(*new_symbol);
-      set_decl(new_decl);
-    }
+      decl_symbol() = to_symbol_expr(*new_symbol);
   }
   break;
 
   case DEAD:
   {
-    auto new_symbol = f(get_dead().symbol());
+    auto new_symbol = f(dead_symbol());
     if(new_symbol.has_value())
-    {
-      auto new_dead = get_dead();
-      new_dead.symbol() = to_symbol_expr(*new_symbol);
-      set_dead(new_dead);
-    }
+      dead_symbol() = to_symbol_expr(*new_symbol);
   }
   break;
 
@@ -1037,7 +1023,7 @@ void goto_programt::instructiont::apply(
     break;
 
   case RETURN:
-    f(get_return().return_value());
+    f(return_value());
     break;
 
   case ASSIGN:
@@ -1046,11 +1032,11 @@ void goto_programt::instructiont::apply(
     break;
 
   case DECL:
-    f(get_decl().symbol());
+    f(decl_symbol());
     break;
 
   case DEAD:
-    f(get_dead().symbol());
+    f(dead_symbol());
     break;
 
   case FUNCTION_CALL:

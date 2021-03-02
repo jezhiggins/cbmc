@@ -18,6 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <sstream>
 #include <string>
 
+#include <util/deprecate.h>
 #include <util/invariant.h>
 #include <util/namespace.h>
 #include <util/source_location.h>
@@ -196,27 +197,75 @@ public:
     }
 
     /// Get the declaration for DECL
+    DEPRECATED(SINCE(2021, 2, 24, "Use decl_symbol instead"))
     const code_declt &get_decl() const
     {
       PRECONDITION(is_decl());
-      return to_code_decl(code);
+      const auto &decl = expr_checked_cast<code_declt>(code);
+      INVARIANT(
+        !decl.initial_value(),
+        "code_declt in goto program may not contain initialization.");
+      return decl;
+    }
+
+    /// Get the declared symbol for DECL
+    const symbol_exprt &decl_symbol() const
+    {
+      PRECONDITION(is_decl());
+      auto &decl = expr_checked_cast<code_declt>(code);
+      INVARIANT(
+        !decl.initial_value(),
+        "code_declt in goto program may not contain initialization.");
+      return decl.symbol();
+    }
+
+    /// Get the declared symbol for DECL
+    symbol_exprt &decl_symbol()
+    {
+      PRECONDITION(is_decl());
+      auto &decl = expr_checked_cast<code_declt>(code);
+      INVARIANT(
+        !decl.initial_value(),
+        "code_declt in goto program may not contain initialization.");
+      return decl.symbol();
     }
 
     /// Set the declaration for DECL
+    DEPRECATED(SINCE(2021, 2, 24, "Use decl_symbol instead"))
     void set_decl(code_declt c)
     {
       PRECONDITION(is_decl());
+      INVARIANT(
+        !c.initial_value(),
+        "Initialization must be separated from code_declt before adding to "
+        "goto_instructiont.");
       code = std::move(c);
     }
 
     /// Get the dead statement for DEAD
+    DEPRECATED(SINCE(2021, 2, 24, "Use dead_symbol instead"))
     const code_deadt &get_dead() const
     {
       PRECONDITION(is_dead());
       return to_code_dead(code);
     }
 
+    /// Get the symbol for DEAD
+    const symbol_exprt &dead_symbol() const
+    {
+      PRECONDITION(is_dead());
+      return to_code_dead(code).symbol();
+    }
+
+    /// Get the symbol for DEAD
+    symbol_exprt &dead_symbol()
+    {
+      PRECONDITION(is_dead());
+      return to_code_dead(code).symbol();
+    }
+
     /// Set the dead statement for DEAD
+    DEPRECATED(SINCE(2021, 2, 24, "Use dead_symbol instead"))
     void set_dead(code_deadt c)
     {
       PRECONDITION(is_dead());
@@ -224,13 +273,29 @@ public:
     }
 
     /// Get the return statement for READ
+    DEPRECATED(SINCE(2021, 2, 24, "Use return_value instead"))
     const code_returnt &get_return() const
     {
       PRECONDITION(is_return());
       return to_code_return(code);
     }
 
+    /// Get the return value of a RETURN instruction
+    const exprt &return_value() const
+    {
+      PRECONDITION(is_return());
+      return to_code_return(code).return_value();
+    }
+
+    /// Get the return value of a RETURN instruction
+    exprt &return_value()
+    {
+      PRECONDITION(is_return());
+      return to_code_return(code).return_value();
+    }
+
     /// Set the return statement for READ
+    DEPRECATED(SINCE(2021, 2, 24, "Use return_value instead"))
     void set_return(code_returnt c)
     {
       PRECONDITION(is_return());

@@ -202,19 +202,13 @@ void escape_domaint::transform(
     break;
 
   case DECL:
-    {
-      const code_declt &code_decl=to_code_decl(instruction.code);
-      aliases.isolate(code_decl.get_identifier());
-      assign_lhs_cleanup(code_decl.symbol(), std::set<irep_idt>());
-    }
+    aliases.isolate(instruction.decl_symbol().get_identifier());
+    assign_lhs_cleanup(instruction.decl_symbol(), std::set<irep_idt>());
     break;
 
   case DEAD:
-    {
-      const code_deadt &code_dead=to_code_dead(instruction.code);
-      aliases.isolate(code_dead.get_identifier());
-      assign_lhs_cleanup(code_dead.symbol(), std::set<irep_idt>());
-    }
+    aliases.isolate(instruction.dead_symbol().get_identifier());
+    assign_lhs_cleanup(instruction.dead_symbol(), std::set<irep_idt>());
     break;
 
   case FUNCTION_CALL:
@@ -487,14 +481,14 @@ void escape_analysist::instrument(
       }
       else if(instruction.type == DEAD)
       {
-        const code_deadt &code_dead = to_code_dead(instruction.code);
+        const auto &dead_symbol = instruction.dead_symbol();
 
         std::set<irep_idt> cleanup_functions1;
 
         const escape_domaint &d = operator[](i_it);
 
         const escape_domaint::cleanup_mapt::const_iterator m_it =
-          d.cleanup_map.find("&" + id2string(code_dead.get_identifier()));
+          d.cleanup_map.find("&" + id2string(dead_symbol.get_identifier()));
 
         // does it have a cleanup function for the object?
         if(m_it != d.cleanup_map.end())
@@ -506,22 +500,12 @@ void escape_analysist::instrument(
 
         std::set<irep_idt> cleanup_functions2;
 
-        d.check_lhs(code_dead.symbol(), cleanup_functions2);
+        d.check_lhs(dead_symbol, cleanup_functions2);
 
         insert_cleanup(
-          gf_entry.second,
-          i_it,
-          code_dead.symbol(),
-          cleanup_functions1,
-          true,
-          ns);
+          gf_entry.second, i_it, dead_symbol, cleanup_functions1, true, ns);
         insert_cleanup(
-          gf_entry.second,
-          i_it,
-          code_dead.symbol(),
-          cleanup_functions2,
-          false,
-          ns);
+          gf_entry.second, i_it, dead_symbol, cleanup_functions2, false, ns);
 
         for(const auto &c : cleanup_functions1)
         {

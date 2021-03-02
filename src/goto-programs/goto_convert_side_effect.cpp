@@ -38,13 +38,25 @@ void goto_convertt::remove_assignment(
   side_effect_exprt &expr,
   goto_programt &dest,
   bool result_is_used,
+  bool address_taken,
   const irep_idt &mode)
 {
   const irep_idt statement=expr.get_statement();
 
+  optionalt<exprt> replacement_expr_opt;
+
   if(statement==ID_assign)
   {
     auto &old_assignment = to_side_effect_expr_assign(expr);
+
+    if(result_is_used && !address_taken && needs_cleaning(old_assignment.lhs()))
+    {
+      if(!old_assignment.rhs().is_constant())
+        make_temp_symbol(old_assignment.rhs(), "assign", dest, mode);
+
+      replacement_expr_opt = old_assignment.rhs();
+    }
+
     exprt new_lhs = skip_typecast(old_assignment.lhs());
     exprt new_rhs =
       typecast_exprt::conditional_cast(old_assignment.rhs(), new_lhs.type());
@@ -113,10 +125,17 @@ void goto_convertt::remove_assignment(
     rhs.type() = to_binary_expr(expr).op0().type();
     rhs.add_source_location() = expr.source_location();
 
+    if(
+      result_is_used && !address_taken &&
+      needs_cleaning(to_binary_expr(expr).op0()))
+    {
+      make_temp_symbol(rhs, "assign", dest, mode);
+      replacement_expr_opt = rhs;
+    }
+
     exprt new_lhs = skip_typecast(to_binary_expr(expr).op0());
     rhs = typecast_exprt::conditional_cast(rhs, new_lhs.type());
     rhs.add_source_location() = expr.source_location();
-
     code_assignt assignment(new_lhs, rhs);
     assignment.add_source_location()=expr.source_location();
 
@@ -126,7 +145,13 @@ void goto_convertt::remove_assignment(
     UNREACHABLE;
 
   // revert assignment in the expression to its LHS
-  if(result_is_used)
+  if(replacement_expr_opt.has_value())
+  {
+    exprt new_lhs =
+      typecast_exprt::conditional_cast(*replacement_expr_opt, expr.type());
+    expr.swap(new_lhs);
+  }
+  else if(result_is_used)
   {
     exprt lhs = to_binary_expr(expr).op0();
     // assign_* statements can have an lhs operand with a different type than
@@ -156,6 +181,7 @@ void goto_convertt::remove_pre(
   side_effect_exprt &expr,
   goto_programt &dest,
   bool result_is_used,
+  bool address_taken,
   const irep_idt &mode)
 {
   INVARIANT_WITH_DIAGNOSTICS(
@@ -209,6 +235,11 @@ void goto_convertt::remove_pre(
   rhs.add_to_operands(op, std::move(constant));
   rhs.type() = op.type();
 
+  const bool cannot_use_lhs =
+    result_is_used && !address_taken && needs_cleaning(op);
+  if(cannot_use_lhs)
+    make_temp_symbol(rhs, "pre", dest, mode);
+
   code_assignt assignment(op, rhs);
   assignment.add_source_location()=expr.find_source_location();
 
@@ -216,9 +247,14 @@ void goto_convertt::remove_pre(
 
   if(result_is_used)
   {
-    // revert to argument of pre-inc/pre-dec
-    exprt tmp = op;
-    expr.swap(tmp);
+    if(cannot_use_lhs)
+      expr.swap(rhs);
+    else
+    {
+      // revert to argument of pre-inc/pre-dec
+      exprt tmp = op;
+      expr.swap(tmp);
+    }
   }
   else
     expr.make_nil();
@@ -556,7 +592,8 @@ void goto_convertt::remove_side_effect(
   side_effect_exprt &expr,
   goto_programt &dest,
   const irep_idt &mode,
-  bool result_is_used)
+  bool result_is_used,
+  bool address_taken)
 {
   const irep_idt &statement=expr.get_statement();
 
@@ -575,13 +612,13 @@ void goto_convertt::remove_side_effect(
           statement==ID_assign_ashr ||
           statement==ID_assign_shl ||
           statement==ID_assign_mod)
-    remove_assignment(expr, dest, result_is_used, mode);
+    remove_assignment(expr, dest, result_is_used, address_taken, mode);
   else if(statement==ID_postincrement ||
           statement==ID_postdecrement)
     remove_post(expr, dest, mode, result_is_used);
   else if(statement==ID_preincrement ||
           statement==ID_predecrement)
-    remove_pre(expr, dest, result_is_used, mode);
+    remove_pre(expr, dest, result_is_used, address_taken, mode);
   else if(statement==ID_cpp_new ||
           statement==ID_cpp_new_array)
     remove_cpp_new(expr, dest, result_is_used);

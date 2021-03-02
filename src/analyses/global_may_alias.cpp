@@ -120,18 +120,12 @@ void global_may_alias_domaint::transform(
   }
 
   case DECL:
-  {
-    const code_declt &code_decl = to_code_decl(instruction.code);
-    aliases.isolate(code_decl.get_identifier());
+    aliases.isolate(instruction.decl_symbol().get_identifier());
     break;
-  }
 
   case DEAD:
-  {
-    const code_deadt &code_dead = to_code_dead(instruction.code);
-    aliases.isolate(code_dead.get_identifier());
+    aliases.isolate(instruction.dead_symbol().get_identifier());
     break;
-  }
 
   case FUNCTION_CALL: // Probably safe
   case GOTO:          // Ignoring the guard is a valid over-approximation

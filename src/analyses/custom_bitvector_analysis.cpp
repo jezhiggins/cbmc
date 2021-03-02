@@ -294,24 +294,21 @@ void custom_bitvector_domaint::transform(
 
   case DECL:
     {
-      const code_declt &code_decl=to_code_decl(instruction.code);
-      assign_lhs(code_decl.symbol(), vectorst());
+      const auto &decl_symbol = instruction.decl_symbol();
+      assign_lhs(decl_symbol, vectorst());
 
       // is it a pointer?
-      if(code_decl.symbol().type().id()==ID_pointer)
-        assign_lhs(dereference_exprt(code_decl.symbol()), vectorst());
+      if(decl_symbol.type().id() == ID_pointer)
+        assign_lhs(dereference_exprt(decl_symbol), vectorst());
     }
     break;
 
   case DEAD:
-    {
-      const code_deadt &code_dead=to_code_dead(instruction.code);
-      assign_lhs(code_dead.symbol(), vectorst());
+    assign_lhs(instruction.dead_symbol(), vectorst());
 
-      // is it a pointer?
-      if(code_dead.symbol().type().id()==ID_pointer)
-        assign_lhs(dereference_exprt(code_dead.symbol()), vectorst());
-    }
+    // is it a pointer?
+    if(instruction.dead_symbol().type().id() == ID_pointer)
+      assign_lhs(dereference_exprt(instruction.dead_symbol()), vectorst());
     break;
 
   case FUNCTION_CALL:

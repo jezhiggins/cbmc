@@ -102,16 +102,19 @@ protected:
     side_effect_exprt &expr,
     goto_programt &dest,
     const irep_idt &mode,
-    bool result_is_used);
+    bool result_is_used,
+    bool address_taken);
   void remove_assignment(
     side_effect_exprt &expr,
     goto_programt &dest,
     bool result_is_used,
+    bool address_taken,
     const irep_idt &mode);
   void remove_pre(
     side_effect_exprt &expr,
     goto_programt &dest,
     bool result_is_used,
+    bool address_taken,
     const irep_idt &mode);
   void remove_post(
     side_effect_exprt &expr,
@@ -587,6 +590,26 @@ protected:
   irep_idt get_string_constant(const exprt &expr);
   bool get_string_constant(const exprt &expr, irep_idt &);
   exprt get_constant(const exprt &expr);
+
+  /// \brief Converts calls to the built in `enum_is_in_range` function to a
+  ///    test that the given enum value is in the valid range of values for that
+  ///    enum type.
+  ///
+  /// Note that the check for the range of values is done by creating a
+  /// disjunction comparing the expression with each possible valid value.
+  /// \param lhs: The destination for the generated assignment.
+  /// \param function: The `enum_is_in_range` symbol of the source function call.
+  /// \param arguments: A collection of arguments, which is expected to contain a
+  ///    single argument which is an expression that resolves to a value of
+  ///    enum type. The arguments are expected to have been prevalidated by the
+  ///    typechecking process.
+  /// \param dest: The goto program into which the generated assignment is
+  ///    copied.
+  void do_enum_is_in_range(
+    const exprt &lhs,
+    const symbol_exprt &function,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
 
   // some built-in functions
   void do_atomic_begin(

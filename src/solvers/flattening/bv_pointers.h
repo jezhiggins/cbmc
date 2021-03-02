@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
 #define CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
 
+#include <util/nodiscard.h>
 
 #include "boolbv.h"
 #include "pointer_logic.h"
@@ -25,19 +26,42 @@ public:
 
   void post_process() override;
 
+  std::size_t boolbv_width(const typet &type) const override
+  {
+    return bv_pointers_width(type);
+  }
+
+  endianness_mapt
+  endianness_map(const typet &type, bool little_endian) const override;
+
 protected:
   pointer_logict pointer_logic;
+
+  class bv_pointers_widtht : public boolbv_widtht
+  {
+  public:
+    explicit bv_pointers_widtht(const namespacet &_ns) : boolbv_widtht(_ns)
+    {
+    }
+
+    std::size_t operator()(const typet &type) const override;
+
+    std::size_t get_object_width(const pointer_typet &type) const;
+    std::size_t get_offset_width(const pointer_typet &type) const;
+    std::size_t get_address_width(const pointer_typet &type) const;
+  };
+  bv_pointers_widtht bv_pointers_width;
 
   // NOLINTNEXTLINE(readability/identifiers)
   typedef boolbvt SUB;
 
-  unsigned object_bits, offset_bits, bits;
-
-  void encode(std::size_t object, bvt &bv);
+  NODISCARD
+  bvt encode(std::size_t object, const pointer_typet &type) const;
 
   virtual bvt convert_pointer_type(const exprt &expr);
 
-  virtual void add_addr(const exprt &expr, bvt &bv);
+  NODISCARD
+  virtual bvt add_addr(const exprt &expr);
 
   // overloading
   literalt convert_rest(const exprt &expr) override;
@@ -49,14 +73,26 @@ protected:
     std::size_t offset,
     const typet &type) const override;
 
-  bool convert_address_of_rec(
-    const exprt &expr,
-    bvt &bv);
+  NODISCARD
+  optionalt<bvt> convert_address_of_rec(const exprt &expr);
 
-  void offset_arithmetic(bvt &bv, const mp_integer &x);
-  void offset_arithmetic(bvt &bv, const mp_integer &factor, const exprt &index);
-  void offset_arithmetic(
-    bvt &bv, const mp_integer &factor, const bvt &index_bv);
+  NODISCARD
+  bvt offset_arithmetic(
+    const pointer_typet &type,
+    const bvt &bv,
+    const mp_integer &x);
+  NODISCARD
+  bvt offset_arithmetic(
+    const pointer_typet &type,
+    const bvt &bv,
+    const mp_integer &factor,
+    const exprt &index);
+  NODISCARD
+  bvt offset_arithmetic(
+    const pointer_typet &type,
+    const bvt &bv,
+    const mp_integer &factor,
+    const bvt &index_bv);
 
   struct postponedt
   {
@@ -68,6 +104,49 @@ protected:
   postponed_listt postponed_list;
 
   void do_postponed(const postponedt &postponed);
+
+  /// Given a pointer encoded in \p bv, extract the literals identifying the
+  /// object that the pointer points to.
+  /// \param bv: Encoded pointer
+  /// \param type: Type of the encoded pointer
+  /// \return Vector of literals identifying the object part of \p bv
+  bvt object_literals(const bvt &bv, const pointer_typet &type) const
+  {
+    const std::size_t offset_width = bv_pointers_width.get_offset_width(type);
+    const std::size_t object_width = bv_pointers_width.get_object_width(type);
+    PRECONDITION(bv.size() >= offset_width + object_width);
+
+    return bvt(
+      bv.begin() + offset_width, bv.begin() + offset_width + object_width);
+  }
+
+  /// Given a pointer encoded in \p bv, extract the literals representing the
+  /// offset into an object that the pointer points to.
+  /// \param bv: Encoded pointer
+  /// \param type: Type of the encoded pointer
+  /// \return Vector of literals identifying the offset part of \p bv
+  bvt offset_literals(const bvt &bv, const pointer_typet &type) const
+  {
+    const std::size_t offset_width = bv_pointers_width.get_offset_width(type);
+    PRECONDITION(bv.size() >= offset_width);
+
+    return bvt(bv.begin(), bv.begin() + offset_width);
+  }
+
+  /// Construct a pointer encoding from given encodings of \p object and \p
+  /// offset.
+  /// \param object: Encoded object
+  /// \param offset: Encoded offset
+  /// \return Pointer encoding
+  static bvt object_offset_encoding(const bvt &object, const bvt &offset)
+  {
+    bvt result;
+    result.reserve(offset.size() + object.size());
+    result.insert(result.end(), offset.begin(), offset.end());
+    result.insert(result.end(), object.begin(), object.end());
+
+    return result;
+  }
 };
 
 #endif // CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H

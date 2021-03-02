@@ -70,7 +70,7 @@ public:
       _options.get_bool_option("float-overflow-check");
     enable_simplify=_options.get_bool_option("simplify");
     enable_nan_check=_options.get_bool_option("nan-check");
-    retain_trivial=_options.get_bool_option("retain-trivial");
+    retain_trivial = _options.get_bool_option("retain-trivial-checks");
     enable_assert_to_assume=_options.get_bool_option("assert-to-assume");
     enable_assertions=_options.get_bool_option("assertions");
     enable_built_in_assertions=_options.get_bool_option("built-in-assertions");
@@ -178,7 +178,7 @@ protected:
   void mod_overflow_check(const mod_exprt &, const guardt &);
   void enum_range_check(const exprt &, const guardt &);
   void undefined_shift_check(const shift_exprt &, const guardt &);
-  void pointer_rel_check(const binary_relation_exprt &, const guardt &);
+  void pointer_rel_check(const binary_exprt &, const guardt &);
   void pointer_overflow_check(const exprt &, const guardt &);
 
   /// Generates VCCs for the validity of the given dereferencing operation.
@@ -242,7 +242,7 @@ protected:
     const guardt &guard);
 
   goto_programt new_code;
-  typedef std::set<exprt> assertionst;
+  typedef std::set<std::pair<exprt, exprt>> assertionst;
   assertionst assertions;
 
   /// Remove all assertions containing the symbol in \p lhs as well as all
@@ -286,8 +286,12 @@ protected:
 void goto_checkt::collect_allocations(
   const goto_functionst &goto_functions)
 {
-  if(!enable_pointer_check && !enable_bounds_check)
+  if(
+    !enable_pointer_check && !enable_bounds_check &&
+    !enable_pointer_overflow_check)
+  {
     return;
+  }
 
   for(const auto &gf_entry : goto_functions.function_map)
   {
@@ -329,8 +333,12 @@ void goto_checkt::invalidate(const exprt &lhs)
 
     for(auto it = assertions.begin(); it != assertions.end();)
     {
-      if(has_symbol(*it, find_symbols_set) || has_subexpr(*it, ID_dereference))
+      if(
+        has_symbol(it->second, find_symbols_set) ||
+        has_subexpr(it->second, ID_dereference))
+      {
         it = assertions.erase(it);
+      }
       else
         ++it;
     }
@@ -1117,7 +1125,7 @@ void goto_checkt::nan_check(
 }
 
 void goto_checkt::pointer_rel_check(
-  const binary_relation_exprt &expr,
+  const binary_exprt &expr,
   const guardt &guard)
 {
   if(!enable_pointer_check)
@@ -1128,17 +1136,33 @@ void goto_checkt::pointer_rel_check(
   {
     // add same-object subgoal
 
-    if(enable_pointer_check)
-    {
-      exprt same_object=::same_object(expr.op0(), expr.op1());
+    exprt same_object = ::same_object(expr.op0(), expr.op1());
 
-      add_guarded_property(
-        same_object,
-        "same object violation",
-        "pointer",
-        expr.find_source_location(),
-        expr,
-        guard);
+    add_guarded_property(
+      same_object,
+      "same object violation",
+      "pointer",
+      expr.find_source_location(),
+      expr,
+      guard);
+
+    for(const auto &pointer : expr.operands())
+    {
+      // just this particular byte must be within object bounds or one past the
+      // end
+      const auto size = from_integer(0, size_type());
+      auto conditions = get_pointer_dereferenceable_conditions(pointer, size);
+
+      for(const auto &c : conditions)
+      {
+        add_guarded_property(
+          c.assertion,
+          "pointer relation: " + c.description,
+          "pointer arithmetic",
+          expr.find_source_location(),
+          pointer,
+          guard);
+      }
     }
   }
 }
@@ -1157,21 +1181,20 @@ void goto_checkt::pointer_overflow_check(
     expr.operands().size() == 2,
     "pointer arithmetic expected to have exactly 2 operands");
 
-  // check for address space overflow by checking for overflow on integers
-  exprt overflow("overflow-" + expr.id_string(), bool_typet());
-  for(const auto &op : expr.operands())
-  {
-    overflow.add_to_operands(
-      typecast_exprt::conditional_cast(op, pointer_diff_type()));
-  }
+  // the result must be within object bounds or one past the end
+  const auto size = from_integer(0, size_type());
+  auto conditions = get_pointer_dereferenceable_conditions(expr, size);
 
-  add_guarded_property(
-    not_exprt(overflow),
-    "pointer arithmetic overflow on " + expr.id_string(),
-    "overflow",
-    expr.find_source_location(),
-    expr,
-    guard);
+  for(const auto &c : conditions)
+  {
+    add_guarded_property(
+      c.assertion,
+      "pointer arithmetic: " + c.description,
+      "pointer arithmetic",
+      expr.find_source_location(),
+      expr,
+      guard);
+  }
 }
 
 void goto_checkt::pointer_validity_check(
@@ -1376,25 +1399,10 @@ void goto_checkt::bounds_check(
 
     binary_relation_exprt inequality(effective_offset, ID_lt, size_casted);
 
-    exprt::operandst alloc_disjuncts;
-    for(const auto &a : allocations)
-    {
-      typecast_exprt int_ptr{pointer, a.first.type()};
-
-      binary_relation_exprt lower_bound_check{a.first, ID_le, int_ptr};
-
-      plus_exprt upper_bound{
-        int_ptr,
-        typecast_exprt::conditional_cast(ode.offset(), int_ptr.type())};
-
-      binary_relation_exprt upper_bound_check{
-        std::move(upper_bound), ID_lt, plus_exprt{a.first, a.second}};
-
-      alloc_disjuncts.push_back(
-        and_exprt{std::move(lower_bound_check), std::move(upper_bound_check)});
-    }
-
-    exprt in_bounds_of_some_explicit_allocation = disjunction(alloc_disjuncts);
+    exprt in_bounds_of_some_explicit_allocation =
+      is_in_bounds_of_some_explicit_allocation(
+        pointer,
+        plus_exprt{ode.offset(), from_integer(1, ode.offset().type())});
 
     or_exprt precond(
       std::move(in_bounds_of_some_explicit_allocation),
@@ -1510,7 +1518,7 @@ void goto_checkt::add_guarded_property(
       ? std::move(simplified_expr)
       : implies_exprt{guard.as_expr(), std::move(simplified_expr)};
 
-  if(assertions.insert(guarded_expr).second)
+  if(assertions.insert(std::make_pair(src_expr, guarded_expr)).second)
   {
     auto t = new_code.add(
       enable_assert_to_assume ? goto_programt::make_assumption(
@@ -1650,6 +1658,14 @@ void goto_checkt::check_rec_arithmetic_op(const exprt &expr, guardt &guard)
   if(expr.type().id() == ID_signedbv || expr.type().id() == ID_unsignedbv)
   {
     integer_overflow_check(expr, guard);
+
+    if(
+      expr.operands().size() == 2 && expr.id() == ID_minus &&
+      expr.operands()[0].type().id() == ID_pointer &&
+      expr.operands()[1].type().id() == ID_pointer)
+    {
+      pointer_rel_check(to_binary_expr(expr), guard);
+    }
   }
   else if(expr.type().id() == ID_floatbv)
   {
@@ -1982,22 +1998,18 @@ void goto_checkt::goto_check(
     }
     else if(i.is_return())
     {
-      if(i.code.operands().size()==1)
-      {
-        const code_returnt &code_return = to_code_return(i.code);
-        check(code_return.return_value());
-        // the return value invalidate any assertion
-        invalidate(code_return.return_value());
+      check(i.return_value());
+      // the return value invalidate any assertion
+      invalidate(i.return_value());
 
-        if(has_subexpr(code_return.return_value(), [](const exprt &expr) {
-             return expr.id() == ID_r_ok || expr.id() == ID_w_ok;
-           }))
-        {
-          exprt &return_value = to_code_return(i.code).return_value();
-          auto rw_ok_cond = rw_ok_check(return_value);
-          if(rw_ok_cond.has_value())
-            return_value = *rw_ok_cond;
-        }
+      if(has_subexpr(i.return_value(), [](const exprt &expr) {
+           return expr.id() == ID_r_ok || expr.id() == ID_w_ok;
+         }))
+      {
+        exprt &return_value = i.return_value();
+        auto rw_ok_cond = rw_ok_check(return_value);
+        if(rw_ok_cond.has_value())
+          return_value = *rw_ok_cond;
       }
     }
     else if(i.is_throw())
@@ -2268,11 +2280,14 @@ exprt goto_checkt::is_in_bounds_of_some_explicit_allocation(
 
     binary_relation_exprt lb_check(a.first, ID_le, int_ptr);
 
-    plus_exprt ub{int_ptr, size};
+    plus_exprt upper_bound{
+      int_ptr, typecast_exprt::conditional_cast(size, int_ptr.type())};
 
-    binary_relation_exprt ub_check(ub, ID_le, plus_exprt(a.first, a.second));
+    binary_relation_exprt ub_check{
+      std::move(upper_bound), ID_le, plus_exprt{a.first, a.second}};
 
-    alloc_disjuncts.push_back(and_exprt(lb_check, ub_check));
+    alloc_disjuncts.push_back(
+      and_exprt{std::move(lb_check), std::move(ub_check)});
   }
   return disjunction(alloc_disjuncts);
 }

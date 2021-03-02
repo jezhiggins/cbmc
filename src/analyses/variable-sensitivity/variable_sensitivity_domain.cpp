@@ -10,7 +10,7 @@ Date: April 2016
 
 #include <ostream>
 
-#include <analyses/variable-sensitivity/pointer_abstract_object.h>
+#include <analyses/variable-sensitivity/two_value_pointer_abstract_object.h>
 #include <util/message.h>
 #include <util/simplify_expr.h>
 
@@ -46,25 +46,18 @@ void variable_sensitivity_domaint::transform(
     abstract_object_pointert top_object =
       abstract_state
         .abstract_object_factory(
-          to_code_decl(instruction.code).symbol().type(), ns, true, false)
+          instruction.decl_symbol().type(), ns, true, false)
         ->update_location_context(write_location, true);
-    abstract_state.assign(
-      to_code_decl(instruction.code).symbol(), top_object, ns);
+    abstract_state.assign(instruction.decl_symbol(), top_object, ns);
   }
   // We now store top.
   break;
 
   case DEAD:
-  {
     // Remove symbol from map, the only time this occurs now (keep TOP.)
     // It should be the case that DEAD only provides symbols for deletion.
-    const exprt &expr = to_code_dead(instruction.code).symbol();
-    if(expr.id() == ID_symbol)
-    {
-      abstract_state.erase(to_symbol_expr(expr));
-    }
-  }
-  break;
+    abstract_state.erase(instruction.dead_symbol());
+    break;
 
   case ASSIGN:
   {
