@@ -7,6 +7,7 @@
 \*******************************************************************/
 
 #include <analyses/variable-sensitivity/abstract_environment.h>
+#include <analyses/variable-sensitivity/abstract_object.h>
 #include <analyses/variable-sensitivity/variable_sensitivity_object_factory.h>
 #include <util/simplify_expr.h>
 
@@ -196,21 +197,17 @@ bool abstract_environmentt::assume(const exprt &expr, const namespacet &ns)
   // We should only attempt to assume Boolean things
   // This should be enforced by the well-structured-ness of the
   // goto-program and the way assume is used.
-
   PRECONDITION(expr.type().id() == ID_bool);
 
-  // Evaluate the expression
-  abstract_object_pointert res = eval(expr, ns);
+  exprt assumption = do_assume(expr, ns, true);
 
-  exprt possibly_constant = res->to_constant();
-
-  if(possibly_constant.id() != ID_nil) // I.E. actually a value
+  if(assumption.id() != ID_nil) // I.E. actually a value
   {
     // Should be of the right type
     INVARIANT(
-      possibly_constant.type().id() == ID_bool, "simplication preserves type");
+      assumption.type().id() == ID_bool, "simplification preserves type");
 
-    if(possibly_constant.is_false())
+    if(assumption.is_false())
     {
       bool currently_bottom = is_bottom();
       make_bottom();
@@ -237,6 +234,15 @@ bool abstract_environmentt::assume(const exprt &expr, const namespacet &ns)
    */
 
   return false;
+}
+
+exprt abstract_environmentt::do_assume(
+  exprt expr,
+  const namespacet &ns,
+  bool assumeTrue)
+{
+  auto result = eval(expr, ns);
+  return result->to_constant();
 }
 
 abstract_object_pointert abstract_environmentt::abstract_object_factory(
