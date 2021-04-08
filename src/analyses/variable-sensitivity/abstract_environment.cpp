@@ -22,6 +22,10 @@
 #endif
 
 exprt assume_eq(abstract_environmentt &env, exprt expr, const namespacet &ns);
+exprt assume_noteq(
+  abstract_environmentt &env,
+  exprt expr,
+  const namespacet &ns);
 
 std::vector<abstract_object_pointert> eval_operands(
   const exprt &expr,
@@ -247,6 +251,8 @@ exprt abstract_environmentt::do_assume(
   auto expr_id = expr.id();
   if(expr_id == ID_equal)
     return assume_eq(*this, expr, ns);
+  if(expr_id == ID_notequal)
+    return assume_noteq(*this, expr, ns);
 
   auto result = eval(expr, ns);
   return result->to_constant();
@@ -502,4 +508,21 @@ exprt assume_eq(abstract_environmentt &env, exprt expr, const namespacet &ns)
   if(is_lvalue(equal_expr.rhs()))
     env.assign(equal_expr.rhs(), meet, ns);
   return true_exprt();
+}
+
+exprt assume_noteq(abstract_environmentt &env, exprt expr, const namespacet &ns)
+{
+  PRECONDITION(can_cast_expr<notequal_exprt>(expr));
+
+  auto notequal_expr = to_notequal_expr(expr);
+
+  auto left = env.eval(notequal_expr.lhs(), ns);
+  auto right = env.eval(notequal_expr.rhs(), ns);
+
+  auto meet = left->meet(right);
+
+  if(meet->is_bottom())
+    return true_exprt();
+
+  return false_exprt();
 }
