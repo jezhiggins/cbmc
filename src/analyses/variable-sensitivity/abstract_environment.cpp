@@ -284,6 +284,20 @@ exprt abstract_environmentt::do_assume(exprt expr, const namespacet &ns)
     }
     return true_exprt();
   }
+  if(expr_id == ID_or)
+  {
+    exprt or_result = false_exprt();
+    auto or_expr = to_or_expr(expr);
+    for(auto const &operand : or_expr.operands())
+    {
+      auto result = do_assume(operand, ns);
+      if(result.is_nil())
+        return result;
+      if(result.is_true())
+        or_result = true_exprt();
+    }
+    return or_result;
+  }
 
   auto fn = assume_functions[expr_id];
 
