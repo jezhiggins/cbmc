@@ -43,7 +43,7 @@ std::vector<std::string>
 split(std::string const &s, std::string const &delimiter);
 std::vector<exprt> numbersToExprs(std::vector<std::string> const &numbers);
 
-class assume_tester
+class assume_testert
 {
 public:
   void operator()(bool is_true, std::vector<std::string> const &tests)
@@ -95,7 +95,7 @@ public:
     }
   }
 
-  assume_tester(abstract_environmentt &env, namespacet &n)
+  assume_testert(abstract_environmentt &env, namespacet &n)
     : environment(env), ns(n)
   {
   }
@@ -163,7 +163,7 @@ SCENARIO(
   symbol_tablet symbol_table;
   namespacet ns(symbol_table);
 
-  assume_tester assumeTester(environment, ns);
+  assume_testert assumeTester(environment, ns);
 
   GIVEN("true or false")
   {
@@ -189,7 +189,7 @@ SCENARIO(
     auto val2 = from_integer(2, type);
     auto val3 = from_integer(3, type);
     auto val4 = from_integer(4, type);
-    auto val5 = from_integer(4, type);
+    auto val5 = from_integer(5, type);
     auto constant1 = make_constant(val1, environment, ns);
     auto constant3 = make_constant(val3, environment, ns);
     auto interval12 = make_interval(val1, val2, environment, ns);
