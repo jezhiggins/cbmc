@@ -21,6 +21,9 @@
 #  include <iostream>
 #endif
 
+typedef exprt (
+  *assume_function)(abstract_environmentt &, exprt, const namespacet &);
+
 exprt assume_eq(abstract_environmentt &env, exprt expr, const namespacet &ns);
 exprt assume_noteq(
   abstract_environmentt &env,
@@ -248,6 +251,12 @@ bool abstract_environmentt::assume(const exprt &expr, const namespacet &ns)
   return false;
 }
 
+static auto assume_functions =
+  std::map<dstringt, assume_function>{{ID_equal, assume_eq},
+                                      {ID_notequal, assume_noteq},
+                                      {ID_le, assume_le},
+                                      {ID_lt, assume_lt}};
+
 exprt abstract_environmentt::do_assume(exprt expr, const namespacet &ns)
 {
   auto expr_id = expr.id();
@@ -261,17 +270,12 @@ exprt abstract_environmentt::do_assume(exprt expr, const namespacet &ns)
     return result;
   }
 
-  if(expr_id == ID_equal)
-    return assume_eq(*this, expr, ns);
-  if(expr_id == ID_notequal)
-    return assume_noteq(*this, expr, ns);
-  if(expr_id == ID_le)
-    return assume_le(*this, expr, ns);
-  if(expr_id == ID_lt)
-    return assume_lt(*this, expr, ns);
+  auto fn = assume_functions[expr_id];
 
-  auto result = eval(expr, ns)->to_constant();
-  return result;
+  if(fn)
+    return fn(*this, expr, ns);
+
+  return eval(expr, ns)->to_constant();
 }
 
 abstract_object_pointert abstract_environmentt::abstract_object_factory(
