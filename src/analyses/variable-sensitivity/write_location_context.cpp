@@ -112,10 +112,8 @@ write_location_contextt::merge(const abstract_object_pointert &other) const
 
   if(cast_other)
   {
-    bool child_modified = false;
-
     auto merged_child = abstract_objectt::merge(
-      child_abstract_object, cast_other->child_abstract_object, child_modified);
+      child_abstract_object, cast_other->child_abstract_object);
 
     abstract_objectt::locationst location_union =
       get_location_union(cast_other->get_last_written_locations());
@@ -123,13 +121,13 @@ write_location_contextt::merge(const abstract_object_pointert &other) const
     bool merge_locations =
       location_union.size() > get_last_written_locations().size();
 
-    if(child_modified || merge_locations)
+    if(merged_child.modified || merge_locations)
     {
       const auto &result =
         std::dynamic_pointer_cast<write_location_contextt>(mutable_clone());
-      if(child_modified)
+      if(merged_child.modified)
       {
-        result->set_child(merged_child);
+        result->set_child(merged_child.object);
       }
       if(merge_locations)
       {

@@ -244,14 +244,15 @@ public:
   /// \param op2: the second abstract object to merge
   /// \param out_modifications: reference to a flag indicating modification
   ///
-  /// \return The merged abstract object with the same sensitivity as the
-  ///         first parameter. out_modifications will be true if the resulting
-  ///         abstract object is different from op1
-  static abstract_object_pointert merge(
-    const abstract_object_pointert &op1,
-    const abstract_object_pointert &op2,
-    bool &out_modifications);
-  static abstract_object_pointert merge(
+  /// \return A pair containing the merged abstract object with the same
+  ///         sensitivity as op1, and a modified flag which
+  ///         will be true if the merged abstract object is different from op1
+  struct merge_result
+  {
+    abstract_object_pointert object;
+    bool modified;
+  };
+  static merge_result merge(
     const abstract_object_pointert &op1,
     const abstract_object_pointert &op2);
 
