@@ -100,12 +100,14 @@ abstract_object_pointert write_location_contextt::write(
  * object with a given abstract_object
  *
  * \param other the abstract object to merge with
+ * \param widen_mode: Indicates if this is a widening merge
  *
  * \return the result of the merge, or 'this' if the merge would not change
  * the current abstract object
  */
-abstract_object_pointert
-write_location_contextt::merge(const abstract_object_pointert &other) const
+abstract_object_pointert write_location_contextt::merge(
+  const abstract_object_pointert &other,
+  const wident &widen_mode) const
 {
   auto cast_other =
     std::dynamic_pointer_cast<const write_location_contextt>(other);
@@ -113,7 +115,7 @@ write_location_contextt::merge(const abstract_object_pointert &other) const
   if(cast_other)
   {
     auto merged_child = abstract_objectt::merge(
-      child_abstract_object, cast_other->child_abstract_object);
+      child_abstract_object, cast_other->child_abstract_object, widen_mode);
 
     abstract_objectt::locationst location_union =
       get_location_union(cast_other->get_last_written_locations());
@@ -140,7 +142,7 @@ write_location_contextt::merge(const abstract_object_pointert &other) const
     return shared_from_this();
   }
 
-  return abstract_objectt::merge(other);
+  return abstract_objectt::merge(other, widen_mode);
 }
 
 abstract_object_pointert
