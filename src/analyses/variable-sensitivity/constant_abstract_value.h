@@ -63,20 +63,6 @@ public:
 protected:
   CLONE
 
-  /// Attempts to do a constant/constant merge if both are constants,
-  /// otherwise falls back to the parent merge
-  ///
-  /// \param other: the abstract object to merge with
-  /// \param widen_mode: Indicates if this is a widening merge
-  ///
-  /// \return Returns the result of the merge
-  abstract_object_pointert merge(
-    const abstract_object_pointert &other,
-    const wident &widen_mode) const override;
-  abstract_object_pointert
-  meet(const abstract_object_pointert &other) const override;
-
-private:
   /// Merges another abstract value into this one
   ///
   /// \param other: the abstract object to merge with
@@ -87,10 +73,12 @@ private:
   ///         case it returns this.
   abstract_object_pointert merge_with_value(
     const abstract_value_pointert &other,
-    const wident &widen_mode) const;
-  abstract_object_pointert
-  meet_with_value(const abstract_value_pointert &other) const;
+    const wident &widen_mode) const override;
 
+  abstract_object_pointert
+  meet_with_value(const abstract_value_pointert &other) const override;
+
+private:
   exprt value;
 };
 
