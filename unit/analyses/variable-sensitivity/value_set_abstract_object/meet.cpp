@@ -14,6 +14,7 @@
 #include <analyses/variable-sensitivity/variable_sensitivity_object_factory.h>
 
 #include <analyses/variable-sensitivity/variable_sensitivity_test_helpers.h>
+#include <util/arith_tools.h>
 #include <util/bitvector_types.h>
 
 static std::shared_ptr<const value_set_abstract_objectt>
