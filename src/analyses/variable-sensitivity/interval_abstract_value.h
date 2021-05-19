@@ -92,6 +92,8 @@ protected:
   meet_with_value(const abstract_value_pointert &other) const override;
 
 private:
+  exprt to_predicate_internal(const exprt &name) const override;
+
   constant_interval_exprt interval;
 };
 
