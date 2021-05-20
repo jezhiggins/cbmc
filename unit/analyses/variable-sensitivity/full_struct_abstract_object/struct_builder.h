@@ -8,7 +8,7 @@
 #ifndef CBMC_STRUCT_BUILDER_H
 #define CBMC_STRUCT_BUILDER_H
 
-#include <variable-sensitivity/full_struct_abstract_object.h>
+#include <analyses/variable-sensitivity/full_struct_abstract_object.h>
 
 #include <map>
 
@@ -20,6 +20,7 @@ full_struct_abstract_objectt::constant_struct_pointert build_struct(
   abstract_environmentt &environment,
   const namespacet &ns);
 
+const int TOP_MEMBER = std::numeric_limits<int>::max();
 full_struct_abstract_objectt::constant_struct_pointert build_struct(
   const std::map<std::string, int> &members,
   abstract_environmentt &environment,
