@@ -5,14 +5,18 @@
  Author: Jez Higgins, jez@jezuk.co.uk
 
 \*******************************************************************/
+
+#include <analyses/variable-sensitivity/full_array_abstract_object.h>
+
 #ifndef CBMC_ARRAY_BUILDER_H
-#define CBMC_ARRAY_BUILDER_H
+#  define CBMC_ARRAY_BUILDER_H
 
 full_array_abstract_objectt::full_array_pointert build_array(
   const exprt &array_expr,
   abstract_environmentt &environment,
   const namespacet &ns);
 
+const int TOP_MEMBER = std::numeric_limits<int>::max();
 full_array_abstract_objectt::full_array_pointert build_array(
   const std::vector<int> &array,
   abstract_environmentt &environment,
